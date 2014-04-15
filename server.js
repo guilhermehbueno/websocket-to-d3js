@@ -3,7 +3,8 @@
 var express = require('express'),
     path = require('path'),
     fs = require('fs'),
-    mongoose = require('mongoose');
+    mongoose = require('mongoose'),
+    KafkaConsumer = require('./lib/kafka-consumer').KafkaConsumer;
 
 /**
  * Main application file
@@ -41,9 +42,63 @@ require('./lib/config/express')(app);
 require('./lib/routes')(app);
 
 // Start server
-app.listen(config.port, function () {
+var server = app.listen(config.port, function () {
   console.log('Express server listening on port %d in %s mode', config.port, app.get('env'));
 });
+
+var everyone = require("now").initialize(server);
+everyone.now.logStuff = function(msg){
+    console.log(msg);
+}
+
+everyone.now.distributeMessage = function(message){
+  everyone.now.receiveMessage(message);
+};
+
+var eventsQueue = [];
+var eventNames = [];
+
+function putEvent(eventType){
+	var indexOf = eventNames.indexOf(eventType.name);
+	if(indexOf<0){
+		eventsQueue.push(eventType);
+		eventNames.push(eventType.name);
+	}else{
+		eventsQueue[indexOf].count++;
+	}
+}
+
+
+function start(){
+	var config={
+    topic: "test",
+    kafkaEndpoint: "localhost:2181"
+	};
+
+	var consumer = new KafkaConsumer(config, function(message){
+		var value = JSON.parse(message.value);
+		console.log(value.type);
+		var event = {name: value.type, count:0};
+		putEvent(event);
+	});
+}
+
+function reset(){
+	for (var i = eventsQueue.length - 1; i >= 0; i--) {
+		var event = eventsQueue[i];
+		event.count=0;
+	};
+}
+
+setTimeout(function(){
+	start();
+	setInterval(function(){
+		console.log("Sending "+ eventsQueue.length);
+		everyone.now.distributeMessage(eventsQueue);
+		reset();
+	},1000);	
+}, 6000);
+
 
 // Expose app
 exports = module.exports = app;

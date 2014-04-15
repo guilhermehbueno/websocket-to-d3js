@@ -261,7 +261,7 @@ var chartRT = function () {
 //
 //
 //
-   var chart = new chartRT();
+    var chart = new chartRT();
     chart.xText = "Seconds";
     chart.yText = "Value";
     chart.titleText = "Random ODD Series";
@@ -272,32 +272,22 @@ var chartRT = function () {
     chart2.xText = "Seconds";
     chart2.yText = "Value";
     chart2.titleText = "Random Even Series";
-    chart2.Ticks = 5;
+    chart2.Ticks = 60;
     chart2.TickDuration = 1000;
-    chart2.MaxValue = 10;
+    chart2.MaxValue = 10000;
+    chart2.Init();
 
-    var Sequence = 0;
- 
-    var GenRandomSequence = function () {
-
-        Sequence++;
-        chart.addSeries("Random_" + Sequence)
-        Sequence++;
-        chart2.addSeries("Random_" + Sequence)
-        if (Sequence < 20) {
-            setTimeout(GenRandomSequence, 5000);
-        }
-    }
-    setTimeout(GenRandomSequence, 5000);
-
-
-    var update = function () {
-        for (Name in chart.chartSeries) {
-            chart.chartSeries[Name] = Math.random() * 10;
-        }
-        for (Name in chart2.chartSeries) {
-            chart2.chartSeries[Name] = Math.random() * 10;
-        }
-        setTimeout(update, 1000);
-    }
-    setTimeout(update, 1000);
+    var eventNames = [];
+    now.receiveMessage = function(events){
+        console.log(events);
+        for (var i = events.length - 1; i >= 0; i--) {
+            var event = events[i];
+            if(eventNames.indexOf(event.name)<0){
+                eventNames.push(event.name);
+                chart.addSeries(event.name);      
+                chart2.addSeries(event.name);      
+            }
+            chart.chartSeries[event.name]=event.count;
+            chart2.chartSeries[event.name]=event.count;
+        };  
+    };
